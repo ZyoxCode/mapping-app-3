@@ -3,7 +3,6 @@ import type {Viewport} from './types';
 import { type Layer } from "./layers/layer.ts";
 import { allLayers } from "./layers/layers";
 
-
 class GeoMap {
 	canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
@@ -42,6 +41,9 @@ class GeoMap {
 	}
 }
 
+for (const layer of allLayers) {
+    layer.load();
+}
 
 const canvas = document.querySelector<HTMLCanvasElement>('#map')!;
 if (!canvas || canvas == null) {

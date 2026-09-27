@@ -12,16 +12,23 @@ export class Layer {
     enabled: boolean;
     style: Style;
     features: Feature[];
+    ready: boolean;
 
 	constructor(name: string, style: Style, features: Feature[], enabled: boolean = true) {
         this.name = name;
         this.style = style;
         this.features = features;
         this.enabled = enabled;
+        this.ready = true;
 	}
 
+    async load(): Promise<void> {
+        // no-op by default — features were already provided in the constructor
+    }
+
     render(ctx: CanvasRenderingContext2D, scale: number): void {
-        if (!this.enabled) return;
+        if (!this.enabled || !this.ready) return;
+        
         const path = new Path2D();
             for (const feature of this.features) {
             appendToPath(path, feature.type, feature.geometry, scale, this.style);

@@ -19,8 +19,8 @@ function mercatorY(lat: number): number {
 
 export function lonLatToMercator({ x, y }: Point): Point {
     return {
-        x: clampLon(mercatorX(x)),
-        y: clampLat(mercatorY(y))
+        x: mercatorX(clampLon(x)),
+        y: mercatorY(clampLat(y))
     };
 }
 

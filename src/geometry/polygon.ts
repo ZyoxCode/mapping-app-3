@@ -4,6 +4,7 @@ import type { Bounds } from '../types';
 import { lonLatToMercator, updateBounds } from '../utils/math';
 
 
+
 interface PolygonGeometry {
     type: 'Polygon';
     coordinates: number[][][]; // array of rings | rings are array of points | points are array of 2 numbers
@@ -11,27 +12,35 @@ interface PolygonGeometry {
 
 interface ProcessedPolygonGeometry extends ProcessedGeometry {
     path: Path2D;
+    holes: Path2D[];
 }
 
-// Does not take into account multiple rings in a polygon
-registerGeometry<PolygonGeometry, ProcessedPolygonGeometry>('Polygon', {
-    process(geometry) {
-        const ring = geometry.coordinates[0];
-        if (!ring || ring.length === 0) return null;
-
-        const path = new Path2D();
-        const bbox: Bounds = {minCorner: {x: Infinity, y: Infinity}, maxCorner: {x: -Infinity, y: -Infinity}};
-
-        ring.forEach(([lon, lat], i) => {
+function ringToPath(ring: number[][], bbox: Bounds): Path2D {
+    const path = new Path2D();
+    ring.forEach(([lon, lat], i) => {
         const {x, y} = lonLatToMercator({x: lon, y: lat});
         updateBounds(bbox, x, y);
         i === 0 ? path.moveTo(x, y) : path.lineTo(x, y);
-        });
-        path.closePath();
+    });
+    path.closePath();
+    return path;
+}
 
-        return { path, coordinates: geometry.coordinates, bbox, centroid: null };
+registerGeometry<PolygonGeometry, ProcessedPolygonGeometry>('Polygon', {
+    process(geometry) {
+        const [outerRing, ...holeRings] = geometry.coordinates;
+        if (!outerRing || outerRing.length === 0) return null;
+
+        const bbox: Bounds = {minCorner: {x: Infinity, y: Infinity}, maxCorner: {x: -Infinity, y: -Infinity}};
+        const path = ringToPath(outerRing, bbox);
+        const holes = holeRings.map((ring) => ringToPath(ring, bbox));
+
+        return { path, holes, coordinates: geometry.coordinates, bbox, centroid: null };
     },
-    appendToPath(mergedPath, prepared) {
-        mergedPath.addPath(prepared.path);
+    appendToPath(mergedPath, processed) {
+        mergedPath.addPath(processed.path);
+        for (const hole of processed.holes) {
+            mergedPath.addPath(hole);
+        }
     },
 });
