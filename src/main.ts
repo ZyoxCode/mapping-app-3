@@ -1,7 +1,8 @@
 import { resizeCanvas } from "./utils/canvas";
-import type {Viewport} from './types';
+import type { Viewport } from './types';
 import { type Layer } from "./layers/layer.ts";
 import { allLayers } from "./layers/layers";
+import { scaleToWebMercatorZoom } from "./utils/math.ts";
 
 class GeoMap {
 	canvas: HTMLCanvasElement;
@@ -27,15 +28,17 @@ class GeoMap {
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
         if (this.layers == null) {return;}
+
         const R = this.canvas.height / (2 * Math.PI);
         const scale = R * this.viewport.scale;
+        const webMercScale = scaleToWebMercatorZoom(2 * Math.PI * scale);
         const translateX = this.canvas.width / 2 + this.viewport.offset.x;
         const translateY = this.canvas.height / 2 + this.viewport.offset.y;
 
         this.ctx.setTransform(scale, 0, 0, -scale, translateX, translateY);
         
         for (const layer of this.layers) {
-            layer.render(this.ctx, scale);
+            layer.render(this.ctx, scale, webMercScale);
         }
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
 	}
@@ -84,6 +87,7 @@ canvas.addEventListener('wheel', (e) => {
     map.viewport.offset.x = dx - (dx - map.viewport.offset.x) * zoomFactor;
     map.viewport.offset.y = dy - (dy - map.viewport.offset.y) * zoomFactor;
     map.viewport.scale *= zoomFactor;
+
 }, { passive: false });
   
 canvas.addEventListener('pointerdown', (e) => {

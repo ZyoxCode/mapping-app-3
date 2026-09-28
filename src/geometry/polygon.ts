@@ -1,7 +1,10 @@
 import { registerGeometry } from './registry';
 import type { ProcessedGeometry } from './types';
 import type { Bounds } from '../types';
-import { lonLatToMercator, updateBounds } from '../utils/math';
+import type { PreparedPolygon } from './polygon-utils';
+
+import {buildPolygonForZoom, processPolygonRings } from './polygon-utils';
+
 
 
 
@@ -15,27 +18,14 @@ interface ProcessedPolygonGeometry extends ProcessedGeometry {
     holes: Path2D[];
 }
 
-function ringToPath(ring: number[][], bbox: Bounds): Path2D {
-    const path = new Path2D();
-    ring.forEach(([lon, lat], i) => {
-        const {x, y} = lonLatToMercator({x: lon, y: lat});
-        updateBounds(bbox, x, y);
-        i === 0 ? path.moveTo(x, y) : path.lineTo(x, y);
-    });
-    path.closePath();
-    return path;
-}
-
-registerGeometry<PolygonGeometry, ProcessedPolygonGeometry>('Polygon', {
+registerGeometry<PolygonGeometry, PreparedPolygon, ProcessedPolygonGeometry>('Polygon', {
     process(geometry) {
-        const [outerRing, ...holeRings] = geometry.coordinates;
-        if (!outerRing || outerRing.length === 0) return null;
-
+        return processPolygonRings(geometry.coordinates);
+    },
+    buildSimplified(prepared, minArea) {
         const bbox: Bounds = {minCorner: {x: Infinity, y: Infinity}, maxCorner: {x: -Infinity, y: -Infinity}};
-        const path = ringToPath(outerRing, bbox);
-        const holes = holeRings.map((ring) => ringToPath(ring, bbox));
-
-        return { path, holes, coordinates: geometry.coordinates, bbox, centroid: null };
+        const built = buildPolygonForZoom(prepared, minArea, bbox);
+        return built ? { path: built.path, holes: built.holes, bbox, centroid: null } : null;
     },
     appendToPath(mergedPath, processed) {
         mergedPath.addPath(processed.path);
