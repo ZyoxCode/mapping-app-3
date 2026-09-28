@@ -1,14 +1,16 @@
 import { resizeCanvas } from "./utils/canvas";
-import type { Viewport } from './types';
+import type { Bounds, Viewport } from './types';
 import { type Layer } from "./layers/layer.ts";
 import { allLayers } from "./layers/layers";
 import { scaleToWebMercatorZoom } from "./utils/math.ts";
+import { Logger, logger } from "./utils/logging.ts";
 
 class GeoMap {
 	canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
 	layers: Layer[] | null;
     viewport: Viewport;
+    logger: Logger;
 
 	constructor(canvas: HTMLCanvasElement, layers: Layer[] | null) {
 		this.canvas = canvas;
@@ -20,7 +22,19 @@ class GeoMap {
             isDragging: false,
             scale: 1
         }
+        this.logger = logger;
+        this.logger.enable('Feature Count')
 	}
+
+    getVisibleBounds(scale: number, translateX: number, translateY: number): Bounds {
+        const xMin = (0 - (translateX)) / scale;
+        const xMax = (this.canvas.width - (translateX)) / scale;
+        
+        const yMax = -(0 - (translateY)) / scale;
+        const yMin = -(this.canvas.height - (translateY)) / scale;
+
+        return {minCorner: {x: xMin, y: yMin}, maxCorner: {x: xMax, y: yMax}};
+    }
 
 	render() {
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -34,12 +48,17 @@ class GeoMap {
         const webMercScale = scaleToWebMercatorZoom(2 * Math.PI * scale);
         const translateX = this.canvas.width / 2 + this.viewport.offset.x;
         const translateY = this.canvas.height / 2 + this.viewport.offset.y;
+        const visibleBounds = this.getVisibleBounds(scale, translateX, translateY);
 
         this.ctx.setTransform(scale, 0, 0, -scale, translateX, translateY);
+
+        this.logger.resetCounter('RingRenderCount');
         
         for (const layer of this.layers) {
-            layer.render(this.ctx, scale, webMercScale);
+           layer.render(this.ctx, scale, webMercScale, visibleBounds);
         }
+
+        this.logger.logThrottled('Feature Count', 1000, this.logger.getCounter('RingRenderCount') + " rings rendered.")
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
 	}
 }

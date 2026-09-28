@@ -23,7 +23,8 @@ export class ShapefileLayer extends Layer {
                
                 if (!prepared) return null;
                 const geometryByZoom = this.zoomLevels.map(level => {
-                    return buildGeometryForZoom(prepared, level.minArea)
+                    const built = buildGeometryForZoom(prepared, level.minArea);
+                    return built
                 });
                 if (geometryByZoom.every(g => g === null)) return null;
                 

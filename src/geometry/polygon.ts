@@ -1,12 +1,11 @@
 import { registerGeometry } from './registry';
 import type { ProcessedGeometry } from './types';
-import type { Bounds } from '../types';
-import type { PreparedPolygon } from './polygon-utils';
+import type { BuiltRing, PreparedPolygon } from './polygon-utils';
 
 import {buildPolygonForZoom, processPolygonRings } from './polygon-utils';
+import { boundsIntersect } from '../utils/math';
 
-
-
+import {logger} from '../utils/logging';
 
 interface PolygonGeometry {
     type: 'Polygon';
@@ -15,22 +14,27 @@ interface PolygonGeometry {
 
 interface ProcessedPolygonGeometry extends ProcessedGeometry {
     path: Path2D;
-    holes: Path2D[];
+    holes: BuiltRing[];
 }
 
 registerGeometry<PolygonGeometry, PreparedPolygon, ProcessedPolygonGeometry>('Polygon', {
     process(geometry) {
-        return processPolygonRings(geometry.coordinates);
+        const processed = processPolygonRings(geometry.coordinates);
+        //logger.logThrottled('Geometry Print', 1000, 'Processed Polygon', processed);
+        return processed;
     },
     buildSimplified(prepared, minArea) {
-        const bbox: Bounds = {minCorner: {x: Infinity, y: Infinity}, maxCorner: {x: -Infinity, y: -Infinity}};
-        const built = buildPolygonForZoom(prepared, minArea, bbox);
-        return built ? { path: built.path, holes: built.holes, bbox, centroid: null } : null;
+        const built = buildPolygonForZoom(prepared, minArea);
+        return built ? { path: built.path.path, holes: built.holes, bbox: built.bbox, centroid: null } : null;
     },
-    appendToPath(mergedPath, processed) {
+    appendToPath(mergedPath, processed, visibleBounds) {
+        logger.increment('RingRenderCount', 1);
         mergedPath.addPath(processed.path);
-        for (const hole of processed.holes) {
-            mergedPath.addPath(hole);
+        
+        for (const hole of processed.holes) {    
+            if (!boundsIntersect(visibleBounds, hole.bbox)) continue;
+            mergedPath.addPath(hole.path);
+            logger.increment('RingRenderCount', 1);
         }
     },
 });

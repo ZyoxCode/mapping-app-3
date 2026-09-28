@@ -1,5 +1,5 @@
 import type { ProcessedGeometry, GeometryHandler } from './types';
-import type { Style } from '../style';
+import type { Bounds } from '../types';
 
 const geometryHandlerRegistry = new Map<string, GeometryHandler<any, any, any>>();
 
@@ -23,6 +23,6 @@ export function buildGeometryForZoom(prepared: PreparedGeometry, minArea: number
     return geometryHandlerRegistry.get(prepared.type)?.buildSimplified(prepared.prepared, minArea) ?? null;
 }
 
-export function appendToPath(path: Path2D, type: string, processed: ProcessedGeometry, scale: number, style: Style): void {
-    geometryHandlerRegistry.get(type)?.appendToPath(path, processed, scale, style);
+export function appendToPath(path: Path2D, type: string, processed: ProcessedGeometry, visibleBounds: Bounds): void {
+    geometryHandlerRegistry.get(type)?.appendToPath(path, processed, visibleBounds);
 }

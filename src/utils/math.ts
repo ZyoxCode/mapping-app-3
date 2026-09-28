@@ -39,6 +39,22 @@ export function updateBounds({maxCorner, minCorner}: Bounds, x: number, y: numbe
     maxCorner.y = Math.max(maxCorner.y, y);
 }
 
+export function boundsIntersect({maxCorner: maxCorner1, minCorner: minCorner1}: Bounds, {maxCorner: maxCorner2, minCorner: minCorner2}: Bounds) {
+
+    return maxCorner1.x >= minCorner2.x && maxCorner2.x >= minCorner1.x && maxCorner1.y >= minCorner2.y && maxCorner2.y >= minCorner1.y
+}
+
+export function unionBounds(boxes: Bounds[]): Bounds {
+    const result: Bounds = { maxCorner: { x: -Infinity, y: -Infinity }, minCorner: { x: Infinity, y: Infinity } };
+    for (const b of boxes) {
+        result.minCorner.x = Math.min(result.minCorner.x, b.minCorner.x);
+        result.minCorner.y = Math.min(result.minCorner.y, b.minCorner.y);
+        result.maxCorner.x = Math.max(result.maxCorner.x, b.maxCorner.x);
+        result.maxCorner.y = Math.max(result.maxCorner.y, b.maxCorner.y);
+    }
+    return result;
+}
+
 export function vectorFromTo([x1, y1]: number[], [x2, y2]: number[]): number[] {
     return [x2 - x1, y2 - y1];
 }
@@ -58,7 +74,6 @@ export function degreesToRadians(degrees: number): number {
 export function radiansToDegrees(radians: number): number {
     return radians * 180 / Math.PI;
 }
-
 
 export function triangleArea(a: number[], b: number[], c: number[]): number {
     return Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1])) / 2;

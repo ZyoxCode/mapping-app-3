@@ -1,4 +1,5 @@
 import type { Bounds } from "../types";
+import { logger } from "../utils/logging";
 import { lonLatToMercator, updateBounds } from "../utils/math";
 import { computeRemovalAreas, filterByRemovalArea } from "./augmentation";
 
@@ -6,23 +7,30 @@ export interface ProcessedRing {
     coords: number[][];
     area: number;
     removalAreas: number[];
+    bbox: Bounds;
 }
 
 export interface PreparedPolygon {
     path: ProcessedRing;
     holes: ProcessedRing[];
+    bbox: Bounds;
+}
+
+export interface BuiltRing {
+    path: Path2D;
+    bbox: Bounds;
 }
 
 export interface PolygonRings {
-    path: Path2D;
-    holes: Path2D[];
+    path: BuiltRing;
+    holes: BuiltRing[];
+    bbox: Bounds;
 }
 
-export function ringToPath(ring: number[][], bbox: Bounds): Path2D {
+export function ringToPath(ring: number[][]): Path2D {
     const path = new Path2D();
     ring.forEach(([lon, lat], i) => {
         const {x, y} = lonLatToMercator({x: lon, y: lat});
-        updateBounds(bbox, x, y);
         i === 0 ? path.moveTo(x, y) : path.lineTo(x, y);
     });
     path.closePath();
@@ -39,37 +47,53 @@ export function ringArea(ring: number[][]): number {
     return Math.abs(area / 2);
 }
 
-export function processRing(ring: number[][]): ProcessedRing {
-    return { coords: ring, area: ringArea(ring), removalAreas: computeRemovalAreas(ring) };
+export function computeRingBounds(ring: number[][]): Bounds {
+    const bounds: Bounds = {maxCorner: {x: -Infinity, y: -Infinity}, minCorner: {x: Infinity, y: Infinity}};
+
+    ring.forEach(([lon, lat]) => {
+        const {x, y} = lonLatToMercator({x: lon, y: lat});
+        updateBounds(bounds, x, y);
+       
+    });
+
+    return bounds;
 }
 
-export function buildRingForZoom(processed: ProcessedRing, minArea: number, bbox: Bounds): Path2D {
-    return ringToPath(filterByRemovalArea(processed.coords, processed.removalAreas, minArea), bbox);
+export function processRing(ring: number[][]): ProcessedRing {
+    return { 
+        coords: ring, 
+        area: ringArea(ring), 
+        removalAreas: computeRemovalAreas(ring) ,
+        bbox: computeRingBounds(ring),
+    };
+}
+
+export function buildRingForZoom(processed: ProcessedRing, minArea: number): BuiltRing {
+    const path = ringToPath(filterByRemovalArea(processed.coords, processed.removalAreas, minArea));
+    return { path, bbox: processed.bbox };
 }
 
 export function processPolygonRings(rings: number[][][]): PreparedPolygon | null {
     const [outerRing, ...holeRings] = rings;
     if (!outerRing || outerRing.length === 0) return null;
-
+    const outer = processRing(outerRing);
     return {
-        path: processRing(outerRing),
+        path: outer,
         holes: holeRings.map(processRing),
+        bbox: outer.bbox,
     }
 }
 
-export function buildPolygonForZoom(processed: PreparedPolygon, minArea: number, bbox: Bounds): PolygonRings | null {
+export function buildPolygonForZoom(processed: PreparedPolygon, minArea: number): PolygonRings | null {
     if (processed.path.area < minArea) return null;
 
-    const path = ringToPath(
-        filterByRemovalArea(processed.path.coords, processed.path.removalAreas, minArea),
-        bbox
-    );
+    const path = buildRingForZoom(processed.path, minArea);
 
     const holes = processed.holes.filter(
         hole => hole.area >= minArea
     ).map(
-        hole => ringToPath(filterByRemovalArea(hole.coords, hole.removalAreas, minArea), bbox)
+        hole => buildRingForZoom(hole, minArea)
     );
 
-    return { path, holes };
+    return { path, holes, bbox: processed.bbox};
 }
