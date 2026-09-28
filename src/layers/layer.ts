@@ -1,12 +1,14 @@
 import { appendToPath, type ProcessedGeometry } from "../geometry";
 import { DEFAULT_ZOOM_LEVELS, zoomLevelIndex, type ZoomLevel } from "../geometry/zoom-levels";
-import type {Style} from '../style';
+import type {Style} from '../styles/style';
+import { resolveStyle, type StyleRule } from "../styles/style-rule";
 import type { Bounds } from "../types";
 import { boundsIntersect } from "../utils/math";
 
 
 export interface Feature {
     type: string;
+    properties: Record<string, any>;
     geometryByZoom: (ProcessedGeometry | null)[];
 }
 
@@ -14,14 +16,14 @@ export class Layer {
     name: string;
     enabled: boolean;
     logged: boolean;
-    style: Style;
+    styleRules: StyleRule[];
     features: Feature[];
     ready: boolean;
     zoomLevels: ZoomLevel[];
 
-	constructor(name: string, style: Style, features: Feature[] = [], zoomLevels: ZoomLevel[] = DEFAULT_ZOOM_LEVELS, enabled: boolean = true, logged: boolean = true) {
+	constructor(name: string, styleRules: StyleRule[], features: Feature[] = [], zoomLevels: ZoomLevel[] = DEFAULT_ZOOM_LEVELS, enabled: boolean = true, logged: boolean = true) {
         this.name = name;
-        this.style = style;
+        this.styleRules = styleRules;
         this.features = features;
         this.enabled = enabled;
         this.zoomLevels = zoomLevels;
@@ -36,20 +38,29 @@ export class Layer {
     render(ctx: CanvasRenderingContext2D, scale: number, webMercZoom: number, visibleBounds: Bounds): void {
         if (!this.enabled || !this.ready) return;
         const index = zoomLevelIndex(webMercZoom, this.zoomLevels);
-        const path = new Path2D();
+        const buckets = new Map<Style, Path2D>();
 
         for (const feature of this.features) {
             const geometry = feature.geometryByZoom[index];
             if (!geometry) continue;
             if (!boundsIntersect(visibleBounds, geometry.bbox)) continue;
+
+            const style = resolveStyle(this.styleRules, feature.properties, webMercZoom);
+            if (!style) continue;
+
+            let path = buckets.get(style);
+            if (!path) {
+                path = new Path2D();
+                buckets.set(style, path);
+            }
             appendToPath(path, feature.type, geometry, visibleBounds);
         }
 
-        this.style.apply(ctx, scale);
+        for (const [style, path] of buckets) {
+            style.apply(ctx, scale);
+            if (style.fill) ctx.fill(path);
         
-        ctx.fill(path);
-        if (this.style.style.lineWidth != 0) {
-            ctx.stroke(path);
-        }
+            if (style.style.lineWidth != 0) ctx.stroke(path);
+        }   
     }
 }

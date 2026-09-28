@@ -1,7 +1,8 @@
 import type { Bounds } from "../types";
 import { logger } from "../utils/logging";
-import { lonLatToMercator, updateBounds } from "../utils/math";
+import { lonLatToMercator} from "../utils/math";
 import { computeRemovalAreas, filterByRemovalArea } from "./augmentation";
+import { computeCoordsBounds, coordsToPath } from "./general-utils";
 
 export interface ProcessedRing {
     coords: number[][];
@@ -28,12 +29,8 @@ export interface PolygonRings {
 }
 
 export function ringToPath(ring: number[][]): Path2D {
-    const path = new Path2D();
-    ring.forEach(([lon, lat], i) => {
-        const {x, y} = lonLatToMercator({x: lon, y: lat});
-        i === 0 ? path.moveTo(x, y) : path.lineTo(x, y);
-    });
-    path.closePath();
+    const path = coordsToPath(ring);
+    path.closePath()
     return path;
 }
 
@@ -47,24 +44,12 @@ export function ringArea(ring: number[][]): number {
     return Math.abs(area / 2);
 }
 
-export function computeRingBounds(ring: number[][]): Bounds {
-    const bounds: Bounds = {maxCorner: {x: -Infinity, y: -Infinity}, minCorner: {x: Infinity, y: Infinity}};
-
-    ring.forEach(([lon, lat]) => {
-        const {x, y} = lonLatToMercator({x: lon, y: lat});
-        updateBounds(bounds, x, y);
-       
-    });
-
-    return bounds;
-}
-
 export function processRing(ring: number[][]): ProcessedRing {
     return { 
         coords: ring, 
         area: ringArea(ring), 
         removalAreas: computeRemovalAreas(ring) ,
-        bbox: computeRingBounds(ring),
+        bbox: computeCoordsBounds(ring),
     };
 }
 

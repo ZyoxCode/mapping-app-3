@@ -1,10 +1,10 @@
-import { registerGeometry } from './registry';
-import type { ProcessedGeometry } from './types';
-import type { Bounds } from '../types';
-import { processPolygonRings, buildPolygonForZoom, type PreparedPolygon, type PolygonRings } from './polygon-utils';
-import { boundsIntersect, unionBounds } from '../utils/math';
+import { registerGeometry } from '../registry';
+import type { ProcessedGeometry } from '../types';
+import type { Bounds } from '../../types';
+import { processPolygonRings, buildPolygonForZoom, type PreparedPolygon, type PolygonRings } from '../polygon-utils';
+import { boundsIntersect, unionBounds } from '../../utils/math';
 
-import {logger} from '../utils/logging';
+import {logger} from '../../utils/logging';
 
 interface MultiPolygonGeometry {
     type: 'MultiPolygon';

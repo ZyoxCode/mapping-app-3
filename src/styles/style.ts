@@ -19,9 +19,11 @@ const DEFAULT_STYLE: StyleOptions = {
   
 export class Style {
     style: StyleOptions;
+    fill: boolean;
   
-    constructor(style: StyleOptions) {
+    constructor(style: StyleOptions, fill=true) {
       this.style = { ...DEFAULT_STYLE, ...style };
+      this.fill = fill;
     }
   
     apply(ctx: CanvasRenderingContext2D, scale: number): void {

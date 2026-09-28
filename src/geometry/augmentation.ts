@@ -62,20 +62,25 @@ class IndexedMinHeap {
     }
 }
 
-export function computeRemovalAreas(ring: number[][]): number[] {
-    const n = ring.length;
-    if (n <= 3) return new Array(n).fill(Infinity);
+export function computeRemovalAreas(coords: number[][], closed=true): number[] {
+    const n = coords.length;
+    const minSurvivors = closed ? 3 : 2;
+    if (n <= minSurvivors) return new Array(n).fill(Infinity);
 
     const removalArea = new Array(n).fill(Infinity);
-    const prev = ring.map((_, i) => (i === 0 ? n - 1 : i - 1));
-    const next = ring.map((_, i) => (i === n - 1 ? 0 : i + 1));
-    const importance = ring.map((_, i) => triangleArea(ring[prev[i]], ring[i], ring[next[i]]));
+    const prev = coords.map((_, i) => (i === 0 ? n - 1 : i - 1));
+    const next = coords.map((_, i) => (i === n - 1 ? 0 : i + 1));
+    const removable = (i: number) => closed || (i !== 0 && i !== n - 1);
+
+    const importance = coords.map((_, i) =>
+        removable(i) ? triangleArea(coords[prev[i]], coords[i], coords[next[i]]) : Infinity
+    );
     const heap = new IndexedMinHeap(importance);
 
     let aliveCount = n;
-    let floor = 0; // enforces the monotonic non-decreasing property from before
+    let floor = 0;
 
-    while (aliveCount > 3) {
+    while (aliveCount > minSurvivors) {
         const { index: i, value } = heap.popMin();
         floor = Math.max(floor, value);
         removalArea[i] = floor;
@@ -85,13 +90,14 @@ export function computeRemovalAreas(ring: number[][]): number[] {
         next[p] = nx;
         prev[nx] = p;
 
-        heap.update(p, Math.max(triangleArea(ring[prev[p]], ring[p], ring[next[p]]), floor));
-        heap.update(nx, Math.max(triangleArea(ring[prev[nx]], ring[nx], ring[next[nx]]), floor));
+        if (removable(p)) heap.update(p, Math.max(triangleArea(coords[prev[p]], coords[p], coords[next[p]]), floor));
+        if (removable(nx)) heap.update(nx, Math.max(triangleArea(coords[prev[nx]], coords[nx], coords[next[nx]]), floor));
     }
 
     return removalArea;
 }
 
-export function filterByRemovalArea(ring: number[][], removalAreas: number[], minArea: number): number[][] {
-    return ring.filter((_, i) => removalAreas[i] >= minArea);
+export function filterByRemovalArea(ring: number[][], removalAreas: number[], minArea: number, excludeEnds = false): number[][] {
+    if (!excludeEnds) return ring.filter((_, i) => removalAreas[i] >= minArea);
+    return ring.filter((_, i) => (i == 0 || i == ring.length - 1) || removalAreas[i] >= minArea);
 }

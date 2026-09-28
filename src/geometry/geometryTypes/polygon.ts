@@ -1,11 +1,11 @@
-import { registerGeometry } from './registry';
-import type { ProcessedGeometry } from './types';
-import type { BuiltRing, PreparedPolygon } from './polygon-utils';
+import { registerGeometry } from '../registry';
+import type { ProcessedGeometry } from '../types';
+import type { BuiltRing, PreparedPolygon } from '../polygon-utils';
 
-import {buildPolygonForZoom, processPolygonRings } from './polygon-utils';
-import { boundsIntersect } from '../utils/math';
+import {buildPolygonForZoom, processPolygonRings } from '../polygon-utils';
+import { boundsIntersect } from '../../utils/math';
 
-import {logger} from '../utils/logging';
+import {logger} from '../../utils/logging';
 
 interface PolygonGeometry {
     type: 'Polygon';

@@ -1,5 +1,7 @@
-import './polygon'; // runs polygon.ts top-to-bottom, which calls registerGeometry — nothing is used from it directly
-import './multipolygon';
+import './geometryTypes/polygon';
+import './geometryTypes/multipolygon';
+import './geometryTypes/linestring';
+import './geometryTypes/multilinestring';
 
 export { processGeometry, buildGeometryForZoom, appendToPath } from './registry';
 export type { ProcessedGeometry } from './types';
